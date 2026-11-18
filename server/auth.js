@@ -12,10 +12,10 @@ async function authenticate(roll, password) {
 }
 
 async function dbAuth(roll, password) {
-  const { rows } = await db.pool.query('SELECT roll, name, password_hash FROM people WHERE roll = $1', [roll]);
+  const { rows } = await db.pool.query('SELECT roll, name, role, password_hash FROM people WHERE roll = $1', [roll]);
   if (!rows.length) return null;
   const ok = await bcrypt.compare(password, rows[0].password_hash);
-  return ok ? { roll: rows[0].roll, name: rows[0].name } : null;
+  return ok ? { roll: rows[0].roll, name: rows[0].name, role: rows[0].role } : null;
 }
 
 async function ldapAuth(roll, password) {
@@ -26,7 +26,9 @@ async function ldapAuth(roll, password) {
     await client.bind(dn, password);
     const { searchEntries } = await client.search(dn, { scope: 'base', attributes: ['displayName', 'cn'] });
     const entry = searchEntries[0] || {};
-    return { roll, name: String(entry.displayName || entry.cn || roll) };
+    // LDAP proves who you are; the role still comes from our people table (default student).
+    const { rows } = await db.pool.query('SELECT role FROM people WHERE roll = $1', [roll]);
+    return { roll, name: String(entry.displayName || entry.cn || roll), role: rows[0] ? rows[0].role : 'student' };
   } catch {
     return null; // wrong password or unknown user
   } finally {

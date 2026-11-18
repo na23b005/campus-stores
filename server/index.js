@@ -2,13 +2,35 @@
 const { createServer } = require('http');
 const { createYoga, createSchema } = require('graphql-yoga');
 const { GraphQLError } = require('graphql');
+const jwt = require('jsonwebtoken');
 const db = require('./db');
 const { authenticate } = require('./auth');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'campus-stores-dev-secret';
+
+// The logged-in user from "Authorization: Bearer <token>", or null.
+function readUser(request) {
+  const header = request.headers.get('authorization') || '';
+  if (!header.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(header.slice(7), JWT_SECRET, { algorithms: ['HS256'] });
+  } catch {
+    return null; // expired or tampered token counts as logged out
+  }
+}
+
+function requireRole(user, role) {
+  if (user && user.role === role) return;
+  const who = role === 'admin' ? 'the store desk' : 'a student';
+  throw new GraphQLError(`Log in as ${who} to do this.`, { extensions: { code: 'FORBIDDEN' } });
+}
 
 const typeDefs = /* GraphQL */ `
   type Item { type: String!, qty: Int! }
   type Collector { roll: String!, name: String!, role: String! }
-  type Request { id: ID!, club: String!, event: String!, ownerRoll: String!, due: String!, note: String, items: [Item!]!, collectors: [Collector!]! }
+  type Request { id: ID!, club: String!, event: String!, ownerRoll: String!, due: String!, note: String, status: String!, items: [Item!]!, collectors: [Collector!]! }
+  type User { roll: String!, name: String!, role: String! }
+  type LoginResult { ok: Boolean!, message: String!, token: String, user: User }
   type Unit { id: ID!, type: String!, model: String!, bin: String!, inRepair: Boolean!, onLoan: Boolean! }
   type Loan { num: Int!, requestId: ID!, unitId: ID!, collectorRoll: String!, due: String!, issuedAt: String!, returnedAt: String, returnedBy: String }
   type Note { id: ID!, body: String!, createdAt: String! }
@@ -22,6 +44,9 @@ const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
+    login(roll: String!, password: String!): LoginResult!
+    submitRequest(club: String!, event: String!, due: String!, items: [String!]!, collectorRolls: [String!]!, note: String): Request!
+    approveRequest(id: ID!): Request!
     verifyCollector(requestId: ID!, roll: String!, password: String!): Verification!
     issueKit(requestId: ID!, unitIds: [ID!]!, roll: String!, password: String!): IssueResult!
     recordReturn(loanNum: Int!, returnedBy: String): Loan!
@@ -56,7 +81,11 @@ async function issueKit(requestId, unitIds, roll, password) {
   try {
     await client.query('BEGIN');
     // Locking the request row makes two desks issuing on the same request take turns.
-    const { due } = (await client.query('SELECT due FROM requests WHERE id = $1 FOR UPDATE', [requestId])).rows[0];
+    const { due, status } = (await client.query('SELECT due, status FROM requests WHERE id = $1 FOR UPDATE', [requestId])).rows[0];
+    if (status !== 'approved') {
+      await client.query('ROLLBACK');
+      return { ok: false, message: `${requestId} is not approved yet. Nothing was issued.`, loans: [] };
+    }
     const approved = {};
     for (const r of (await client.query('SELECT item_type, qty FROM request_items WHERE request_id = $1', [requestId])).rows) {
       approved[r.item_type] = r.qty;
@@ -99,6 +128,46 @@ async function issueKit(requestId, unitIds, roll, password) {
   }
 }
 
+// A student files a request; it waits as 'pending' until the desk approves it.
+async function submitRequest(user, { club, event, due, items, collectorRolls, note }) {
+  if (![club, event, due].every((s) => s.trim())) throw new GraphQLError('Club, event and due time are all needed.');
+  if (!items.length) throw new GraphQLError('Ask for at least one item.');
+  const stocked = new Set((await db.pool.query('SELECT DISTINCT type FROM units')).rows.map((r) => r.type));
+  const qty = {}; // listing an item twice asks for two
+  for (const type of items) {
+    if (!stocked.has(type)) throw new GraphQLError(`The desk has no "${type}".`);
+    qty[type] = (qty[type] || 0) + 1;
+  }
+  const rolls = [...new Set(collectorRolls.map((r) => r.trim().toUpperCase()))].filter((r) => r !== user.roll);
+  for (const roll of rolls) {
+    const found = await db.pool.query("SELECT 1 FROM people WHERE roll = $1 AND role = 'student'", [roll]);
+    if (!found.rows.length) throw new GraphQLError(`No student has roll number ${roll}.`);
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const id = 'RQ-' + (await client.query("SELECT nextval('request_num') AS n")).rows[0].n;
+    const row = (await client.query(
+      `INSERT INTO requests (id, club, event, owner_roll, due, note, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *`,
+      [id, club.trim(), event.trim(), user.roll, due.trim(), note || null])).rows[0];
+    for (const [type, n] of Object.entries(qty)) {
+      await client.query('INSERT INTO request_items (request_id, item_type, qty) VALUES ($1, $2, $3)', [id, type, n]);
+    }
+    const addCollector = 'INSERT INTO request_collectors (request_id, roll, role) VALUES ($1, $2, $3)';
+    await client.query(addCollector, [id, user.roll, 'Filed the request']);
+    for (const roll of rolls) await client.query(addCollector, [id, roll, 'Named on the request']);
+    await client.query('COMMIT');
+    return row;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 const resolvers = {
   Query: {
     requests: async () => (await db.pool.query('SELECT * FROM requests ORDER BY id')).rows,
@@ -119,9 +188,29 @@ const resolvers = {
        WHERE c.request_id = $1 ORDER BY c.roll`, [r.id])).rows,
   },
   Mutation: {
+    login: async (_, { roll, password }) => {
+      const user = await authenticate(roll, password);
+      if (!user) return { ok: false, message: 'Roll number or password is wrong.' };
+      const token = jwt.sign(user, JWT_SECRET, { algorithm: 'HS256', expiresIn: '12h' });
+      return { ok: true, message: `Logged in as ${user.name}.`, token, user };
+    },
+    submitRequest: (_, a, { user }) => {
+      requireRole(user, 'student');
+      return submitRequest(user, a);
+    },
+    approveRequest: async (_, { id }, { user }) => {
+      requireRole(user, 'admin');
+      const { rows } = await db.pool.query("UPDATE requests SET status = 'approved' WHERE id = $1 RETURNING *", [id]);
+      if (!rows.length) throw new GraphQLError(`Request ${id} was not found.`);
+      return rows[0];
+    },
     verifyCollector: (_, a) => checkCollector(a.requestId, a.roll, a.password),
-    issueKit: (_, a) => issueKit(a.requestId, a.unitIds, a.roll, a.password),
-    recordReturn: async (_, { loanNum, returnedBy }) => {
+    issueKit: (_, a, { user }) => {
+      requireRole(user, 'admin'); // the desk issues; the collector still proves who they are below
+      return issueKit(a.requestId, a.unitIds, a.roll, a.password);
+    },
+    recordReturn: async (_, { loanNum, returnedBy }, { user }) => {
+      requireRole(user, 'admin');
       const { rows } = await db.pool.query(
         `UPDATE loans SET returned_at = now(), returned_by = $2
          WHERE num = $1 AND returned_at IS NULL RETURNING *`, [loanNum, returnedBy || null]);
@@ -140,6 +229,7 @@ const resolvers = {
 const yoga = createYoga({
   schema: createSchema({ typeDefs, resolvers }),
   cors: { origin: process.env.CORS_ORIGIN || '*' },
+  context: ({ request }) => ({ user: readUser(request) }),
 });
 
 module.exports = { yoga };

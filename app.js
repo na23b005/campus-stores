@@ -303,7 +303,7 @@
           ? ""
           : !approved(r)
             ? '<div class="buttons">' + btn("Approve request", "approve", r.id, "primary") + "</div>"
-            : lines.some((x) => !isOut(x))
+            : lines.some((x) => !x.loan)
               ? '<div class="buttons">' + btn("Issue kit", "issue", r.id, "primary") + "</div>"
               : "");
     } else {
@@ -392,9 +392,9 @@
       if (!r)
         return html + '<p class="hint">Pick the approved request. The units and the people who can collect come from it.</p></form>';
       // Only units of an approved type that are on the shelf and not in repair.
-      const lines = kit(r).filter((x) => !isOut(x));
+      const lines = kit(r).filter((x) => !x.loan);
       if (!lines.length)
-        return html + '<p class="hint">Everything on ' + r.id + " is already out.</p></form>";
+        return html + '<p class="hint">Everything on ' + esc(r.id) + " has already been issued.</p></form>";
       html +=
         '<div class="kitlines">' +
         lines
@@ -503,7 +503,7 @@
     const advance = q('[data-action="advance"]');
     advance.hidden = !phase.next;
     advance.textContent = phase.next || "";
-    q(".shift").hidden = !!s.user && !isAdmin();
+    q(".shift").hidden = !isAdmin();
     q('[data-action="restart"]').hidden = !isAdmin();
     if (!s.user) {
       q("[data-nav]").innerHTML = "";
@@ -683,7 +683,8 @@
     const units = form.getAll("unit").map(getAsset);
     if (!r || !units.length) return say("Pick at least one unit to hand over.");
     // Re-check every unit at save time: approved type, on the shelf, not picked twice, within the approved quantity.
-    const free = kit(r).filter((x) => !isOut(x)).map((x) => x.type);
+    const free = kit(r).filter((x) => !x.loan).map((x) => x.type);
+    if (new Set(units).size !== units.length) return say("Each unit can go out only once.");
     for (const u of units) {
       const i = u ? free.indexOf(u.type) : -1;
       if (i < 0 || u.repair || out(u.id))
@@ -735,7 +736,8 @@
       loans: d.loans.map((l) => ({ ...l })),
       notes: d.notes.map((n) => ({ ...n })),
     };
-    if (s.user && !person(s.user.roll)) s.user = null;
+    const known = s.user && person(s.user.roll);
+    s.user = known ? { roll: known.roll, name: known.name, role: known.role || "student" } : null;
     if (!getReq(s.issueReq)) s.issueReq = "";
     paint();
   }
