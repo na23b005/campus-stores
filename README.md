@@ -3,6 +3,8 @@
 I would keep the product. My main change: **issue the kit from the approved request, to named collectors who sign in with their campus roll number.**
 To support it, the app now has sign-in with two roles: desk staff (full access) and students, who can file requests in the app with the people allowed to collect.
 
+**Live app:** https://campus-stores-na23b005.netlify.app/ (sign in as `ADMIN` / `desk123` to play the shift). The free API server sleeps when idle, so the first sign-in can take up to a minute.
+
 ## What the brief asked, and where it is
 
 | The brief asked for | Where |
