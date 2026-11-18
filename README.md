@@ -126,7 +126,8 @@ Success means one screen, under a minute, zero "outside the approved request" er
 ## Login, backend and hosting
 
 - The static page stays offline-first for reviewers. Without a backend, sign-in is checked against a small demo directory of SHA-256 hashes in `app.js`.
-- When `config.js` sets `window.CAMPUS_API`, the page uses the GraphQL API in `server/` (Node.js, GraphQL Yoga, Postgres, bcrypt).
+- When `config.js` sets `window.CAMPUS_API`, sign-in and the collector check go to the GraphQL API in `server/` (Node.js, GraphQL Yoga, Postgres, bcrypt). The shift records still live in the browser in this prototype.
+- The API already has the record mutations (`issueKit`, `recordReturn`, `submitRequest`, `approveRequest`) with role checks, tested by `npm run smoke`. Moving the page's records onto them is the next step.
 - The auth adapter checks the Postgres directory. It switches to the college LDAP when `LDAP_URL` is set. Students already have a campus roll number and password, so there is no sign-up.
 - Deploy: `render.yaml` (Render web service and Postgres) and `netlify.toml` (static site, `CAMPUS_API` env var).
 - Details are in [server/README.md](server/README.md).
