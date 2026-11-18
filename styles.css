@@ -795,3 +795,25 @@ body > main {
     min-height: 44px;
   }
 }
+
+/* Light mode only, as in the approved design, and the desk fills the page (no card inside a page). */
+:root,
+#campus-stores {
+  color-scheme: light;
+}
+body {
+  padding: 0;
+}
+body > main {
+  max-width: none;
+}
+#campus-stores {
+  border: 0;
+  border-radius: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#campus-stores .shell {
+  flex: 1;
+}
