@@ -3,6 +3,19 @@
 I would keep the product. My main change: **issue the kit from the approved request, to named collectors who sign in with their campus roll number.**
 To support it, the app now has sign-in with two roles: desk staff (full access) and students, who can file requests in the app with the people allowed to collect.
 
+## What the brief asked, and where it is
+
+| The brief asked for | Where |
+| --- | --- |
+| Work the shift: pickup, partial return, morning handover | [Walk through the same job with it](#walk-through-the-same-job-with-it) |
+| One moment the product handles well, with evidence from my shift | [The moment it handles well](#the-moment-it-handles-well) |
+| One moment I would change, with evidence from my shift | [The moment I would change](#the-moment-i-would-change) |
+| Sketch or prototype the change | [My change](#my-change) (sketch) and the working prototype in this repo |
+| Walk through the same job using it | [Walk through the same job with it](#walk-through-the-same-job-with-it) |
+| What I would keep | [What I would keep](#what-i-would-keep) |
+| One observation at a real counter | [How I would know it helped](#how-i-would-know-it-helped) |
+| Explain the decision | The two lines at the top, and [The moment I would change](#the-moment-i-would-change) |
+
 ## Try it in 2 minutes
 
 Open `index.html` in a browser (it works offline), or run `python -m http.server 8000` in this folder and visit `http://localhost:8000`.
