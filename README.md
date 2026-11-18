@@ -147,11 +147,6 @@ Success means one screen, under a minute, zero "outside the approved request" er
 - Deploy: `render.yaml` (Render web service and Postgres) and `netlify.toml` (static site, `CAMPUS_API` env var).
 - Details are in [server/README.md](server/README.md).
 
-## Why no LLM here
-
-- The job is structured records and rules. A rule is exact and works offline.
-- I would use a model where text is messy. One example is reading free-text Desk book messages into structured collector changes, with the desk worker checking the result.
-
 ## What I would do next
 
 - Record when an item passes to someone else. Leela had the adapter overnight, but the slip still says Kabir.
