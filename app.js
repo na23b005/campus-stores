@@ -504,6 +504,13 @@
     advance.hidden = !phase.next;
     advance.textContent = phase.next || "";
     q(".shift").hidden = !isAdmin();
+    q("[data-user]").innerHTML = s.user
+      ? "<span>" +
+        esc(s.user.name) +
+        " · " +
+        (isAdmin() ? "Desk staff" : esc(s.user.roll)) +
+        '</span><button type="button" data-action="logout">Log out</button>'
+      : "";
     q('[data-action="restart"]').hidden = !isAdmin();
     if (!s.user) {
       q("[data-nav]").innerHTML = "";
@@ -527,10 +534,7 @@
           n +
           "</button>",
       )
-      .join("") +
-      '<button type="button" data-action="logout" class="signout">Sign out · ' +
-      esc(s.user.name) +
-      "</button>";
+      .join("");
     q("[data-page]").innerHTML = screens[s.tab]();
     if (q("[data-filter]")) q("[data-filter]").value = s.filter;
     if (q("[data-issue-req]")) q("[data-issue-req]").value = s.issueReq;
@@ -559,7 +563,7 @@
         s.selected = "";
         s.composing = false;
         s.editing = false;
-        s.notice = "Signed out.";
+        s.notice = "Logged out.";
         break;
       case "newreq":
         s.composing = true;
