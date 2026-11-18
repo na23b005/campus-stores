@@ -1,0 +1,29 @@
+{
+  "name": "campus-stores-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GraphQL + Postgres backend for the campus media equipment desk",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "seed": "node seed.js",
+    "reset": "node seed.js --reset",
+    "smoke": "node smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "graphql": "^16.9.0",
+    "graphql-yoga": "^5.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0"
+  },
+  "optionalDependencies": {
+    "ldapts": "^7.2.0"
+  },
+  "devDependencies": {
+    "pg-mem": "^3.0.4"
+  }
+}

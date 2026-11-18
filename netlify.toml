@@ -1,0 +1,5 @@
+# Static site. The build writes config.js from the CAMPUS_API env var
+# (empty CAMPUS_API = the app runs in offline mode).
+[build]
+  publish = "."
+  command = "echo \"window.CAMPUS_API = '${CAMPUS_API}';\" > config.js"

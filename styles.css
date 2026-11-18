@@ -369,3 +369,77 @@ body > main {
     min-height: 44px;
   }
 }
+#campus-stores .tag.warn {
+  background: var(--memo);
+  color: var(--memotxt);
+}
+#campus-stores .subhead {
+  margin: 18px 0 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--quiet);
+}
+#campus-stores .kitlines {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+#campus-stores .kitlines label {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--desk);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+#campus-stores .kitlines select {
+  width: 100%;
+  font-weight: 400;
+}
+#campus-stores .hint {
+  color: var(--quiet);
+  font-size: 13px;
+  margin: 8px 0;
+}
+#campus-stores .formerror {
+  color: var(--mark);
+  font-weight: 600;
+  font-size: 13px;
+  margin: 4px 0 10px;
+}
+#campus-stores .formerror:empty {
+  display: none;
+}
+#campus-stores .checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-weight: 400;
+}
+#campus-stores .checks label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 400;
+}
+@container (max-width: 650px) {
+  #campus-stores .kitlines label {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+#campus-stores .signout {
+  margin-top: 12px;
+  font-weight: 400;
+  color: var(--quiet);
+}
+#campus-stores .fieldlabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
